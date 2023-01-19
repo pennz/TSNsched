@@ -228,12 +228,17 @@ public class Port implements Serializable {
                     );
                 }
                  */
+                // for all priority
+                // for slots in this priority
+                // for aux Priority, which is not the same priority
+                // for all slots in another priority
+                // no overlap, i.e., one start only after another finish
             
-                // No two slots can overlap (No overlapping slots constraint)
-                for(int auxNumericFlowPriority = 0; auxNumericFlowPriority < this.cycle.getNumOfPrts(); auxNumericFlowPriority++) {
-                    if(auxNumericFlowPriority == numericFlowPriority) {
-                        continue;
-                    }
+                // No two slots can overlap (No overlapping slots constraint)  TODO: [Z] Add CC 
+                for(int auxNumericFlowPriority = numericFlowPriority + 1; auxNumericFlowPriority < this.cycle.getNumOfPrts(); auxNumericFlowPriority++) {
+                    //if(auxNumericFlowPriority == numericFlowPriority) {
+                    //    continue;
+                    //}
                 	for(int auxIndex = 0; auxIndex < this.cycle.getNumOfSlots(numericFlowPriority); auxIndex++) {
 
                         IntExpr auxIndexZ3 = ctx.mkInt(auxIndex);
@@ -286,49 +291,44 @@ public class Port implements Serializable {
 
 
                 
+                // for all priority
+                // for all slots in the priority
                 /*
                  * If 2 slots are not consecutive, then there must be a space
                  * of at least gbSize (the size of the guard band) between them
                  * (guard band constraint).
-                 */
-                	for(int prt = 0; prt < this.cycle.getNumOfPrts(); prt ++) {
-                		for(int auxIndex = 0; auxIndex < this.cycle.getNumOfSlots(prt); auxIndex++) {
-                        	IntExpr auxIndexZ3 = ctx.mkInt(auxIndex);
-                        	IntExpr auxFlowPriority = ctx.mkInt(prt);
-                        	
-                        	solver.add(
-                    			ctx.mkImplies(
-                					ctx.mkAnd(
-            							ctx.mkNot(
-    											ctx.mkEq(auxFlowPriority, flowPriority)
-    									),
-            							ctx.mkNot(
-        									ctx.mkEq(
-    											cycle.slotStartZ3(ctx, flowPriority, indexZ3), 
-    											ctx.mkAdd(
-    												cycle.slotDurationZ3(ctx, auxFlowPriority, auxIndexZ3),
-    												cycle.slotStartZ3(ctx, auxFlowPriority, auxIndexZ3)
-    											)                                                
-    										)
-    									),
-            							ctx.mkGt(
-        									cycle.slotStartZ3(ctx, flowPriority, indexZ3), 
-        									cycle.slotStartZ3(ctx, auxFlowPriority, auxIndexZ3)
-    									)
-        							),
-                					ctx.mkGe(
-            							cycle.slotStartZ3(ctx, flowPriority, indexZ3),
-            							ctx.mkAdd(
-        									cycle.slotStartZ3(ctx, auxFlowPriority, auxIndexZ3),
-        									cycle.slotDurationZ3(ctx, auxFlowPriority, auxIndexZ3),
-        									gbSizeZ3
-    									)   
-        							)                        
-            					)
-                			);
-                        }
-                	}                    
-                
+                 */ // TODO: [Z] Equation 17, Guard Band
+                for (int prt = 0;
+                     prt < this.cycle.getNumOfPrts(); prt++) {
+                  for (int auxIndex = 0;
+                       auxIndex < this.cycle.getNumOfSlots(prt); auxIndex++) {
+                    IntExpr auxIndexZ3 = ctx.mkInt(auxIndex);
+                    IntExpr auxFlowPriority = ctx.mkInt(prt);
+
+                    solver.add(ctx.mkImplies(
+                        ctx.mkAnd(
+                            ctx.mkNot(ctx.mkEq(auxFlowPriority, flowPriority)),
+                            ctx.mkNot(ctx.mkEq(
+                                cycle.slotStartZ3(ctx, flowPriority, indexZ3),
+                                ctx.mkAdd(
+                                    cycle.slotDurationZ3(ctx, auxFlowPriority,
+                                                         auxIndexZ3),
+                                    cycle.slotStartZ3(ctx, auxFlowPriority,
+                                                      auxIndexZ3)))),
+                            ctx.mkGt(
+                                cycle.slotStartZ3(ctx, flowPriority, indexZ3),
+                                cycle.slotStartZ3(ctx, auxFlowPriority,
+                                                  auxIndexZ3))),
+                        ctx.mkGe(
+                            cycle.slotStartZ3(ctx, flowPriority, indexZ3),
+                            ctx.mkAdd(cycle.slotStartZ3(ctx, auxFlowPriority,
+                                                        auxIndexZ3),
+                                      cycle.slotDurationZ3(ctx, auxFlowPriority,
+                                                           auxIndexZ3),
+                                      gbSizeZ3))));
+                  }
+                }
+
                 /**/
         	}
         	
@@ -470,7 +470,7 @@ public class Port implements Serializable {
 	        	}
 	        	/**/
 	        	
-	            for(int i = 0; i < flowFrag.getNumOfPacketsSent(); i++) {
+	            for(int i = 0; i < flowFrag.getNumOfPacketsSent(); i++) { // Exist one for every packet for this FF
 	                for(int j = 0; j < auxFragment.getNumOfPacketsSent(); j++) {
 	                	if (auxExp == null) {
 	                        auxExp = ctx.mkFalse();
@@ -1767,7 +1767,7 @@ public class Port implements Serializable {
      * [Usage]: Returns true if the port uses an automated application period
      * methodology.
      * 
-     * @return boolean value. True if automated application period methodology is used, false elsewhise
+     * @return boolean value. True if automated application period methodology is used, false elsewise
      */
     public Boolean checkIfAutomatedApplicationPeriod() {
     	if(this.useHyperCycle || this.useMicroCycles)
